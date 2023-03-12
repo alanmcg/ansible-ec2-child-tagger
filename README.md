@@ -21,7 +21,7 @@ Updates the tags to match those of the parent EC2 instance on:
 Start by specifying the tags you wish to have copied from the parent instances to the child resources by updating the 'tag_resources.yaml' file:
 
 ```yaml:
-- name: Propate specific instance tags to child resources
+- name: Propagate specific instance tags to child resources
   amazon.aws.ec2_tag:
     region: "{{ aws_region }}"
     aws_profile: "{{ aws_profile }}"
