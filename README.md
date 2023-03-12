@@ -52,4 +52,4 @@ ansible-playbook -i inventories/aws/ playbooks/main.yaml -e aws_region=eu-centra
 
 ## TODO
 
-* Tag snapshots
+* ~~Tag snapshots~~

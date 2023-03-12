@@ -6,6 +6,13 @@
   register: ec2_instance_info
   changed_when: false
 
+- name: Gather information about all snapshots
+  amazon.aws.ec2_snapshot_info:
+    region: "{{ aws_region }}"
+    aws_profile: "{{ aws_profile }}"
+  register: ec2_snapshot_info
+  changed_when: false
+
 - name: Create list of instance_ids and the associated block device volume id
   ansible.builtin.set_fact:
     vols: >-
@@ -36,9 +43,28 @@
       {%- endfor -%}
       {{ results }}
 
+- name: Create list of instance_ids and the associated snapshot_id for each volume_id
+  ansible.builtin.set_fact:
+    snapshots: >-
+      {%- set results = [] -%}
+      {%- for instance in ec2_instance_info.instances -%}
+      {%- for snapshot in ec2_snapshot_info.snapshots -%}
+      {%- for block_device in instance.block_device_mappings -%}
+      {%- if block_device.ebs.volume_id == snapshot.volume_id -%}
+      {%- set _ = results.append({
+        'instance_id': instance.instance_id,
+        'resource_id': snapshot.snapshot_id,
+        'tags': instance.tags
+      }) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ results }}
+
 - name: Concatenate results of vols and interfaces
   ansible.builtin.set_fact:
-    all_resources: "{{ vols | default([]) + interfaces | default([]) }}"
+    all_resources: "{{ vols | default([]) + interfaces | default([]) + snapshots | default([]) }}"
 
 - name: Propate specific instance tags to child resources
   amazon.aws.ec2_tag:
@@ -48,6 +74,7 @@
     purge_tags: false
     state: present
     tags:
+      Name: "{{ item.tags | json_query('Name') }}-{{ item.resource_id | split('-') | first }}"
       project: "{{ item.tags | json_query('project') }}"
       environ: "{{ item.tags | json_query('environ') }}"
   loop: "{{ all_resources }}"
