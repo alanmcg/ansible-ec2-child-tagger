@@ -1,0 +1,13 @@
+---
+- hosts: all
+  name: Get inventory and update tags
+  gather_facts: false
+  tasks:
+    - name: Ensure mandatory variables are defined
+      ansible.builtin.assert:
+        that:
+          - aws_profile is defined
+          - aws_region is defined
+
+    - name: Inclue task to get EC2 instances and set tags
+      ansible.builtin.include_tasks: "tag_resources.yaml"

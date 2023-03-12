@@ -1,0 +1,4 @@
+---
+ansible_connection: local
+aws_profile: default
+aws_region: set-me-as-extra-var

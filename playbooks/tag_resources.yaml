@@ -1,0 +1,56 @@
+---
+- name: Gather information about all instances
+  amazon.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    aws_profile: "{{ aws_profile }}"
+  register: ec2_instance_info
+  changed_when: false
+
+- name: Create list of instance_ids and the associated block device volume id
+  ansible.builtin.set_fact:
+    vols: >-
+      {%- set results = [] -%}
+      {%- for instance in ec2_instance_info.instances -%}
+      {%- for block_device in instance.block_device_mappings -%}
+      {%- set _ = results.append({
+        'instance_id': instance.instance_id,
+        'resource_id': block_device.ebs.volume_id,
+        'tags': instance.tags
+      }) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ results }}
+
+- name: Create list of instance_ids and the associated network device interface id
+  ansible.builtin.set_fact:
+    interfaces: >-
+      {%- set results = [] -%}
+      {%- for instance in ec2_instance_info.instances -%}
+      {%- for network_interface in instance.network_interfaces -%}
+      {%- set _ = results.append({
+        'instance_id': instance.instance_id,
+        'resource_id': network_interface.network_interface_id,
+        'tags': instance.tags
+      }) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ results }}
+
+- name: Concatenate results of vols and interfaces
+  ansible.builtin.set_fact:
+    all_resources: "{{ vols | default([]) + interfaces | default([]) }}"
+
+- name: Propate specific instance tags to child resources
+  amazon.aws.ec2_tag:
+    region: "{{ aws_region }}"
+    aws_profile: "{{ aws_profile }}"
+    resource: "{{ item.resource_id }}"
+    purge_tags: false
+    state: present
+    tags:
+      project: "{{ item.tags | json_query('project') }}"
+      environ: "{{ item.tags | json_query('environ') }}"
+  loop: "{{ all_resources }}"
+  when:
+    - item.tags | json_query('project')
+    - item.tags | json_query('environ')
