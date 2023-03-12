@@ -37,6 +37,12 @@ Start by specifying the tags you wish to have copied from the parent instances t
     - item.tags | json_query('environ')
 ```
 
+You can then run ansible-playbook:
+
+```shell:
+ansible-playbook -i inventories/aws/ playbooks/main.yaml -e aws_region=eu-central-1
+```
+
 ### Note
 
 * Only the instances with the tag specified in the 'when' condition will be affected
